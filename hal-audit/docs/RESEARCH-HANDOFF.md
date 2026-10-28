@@ -1,198 +1,192 @@
-# C51C — vibrator kernel timeout research handoff
+# C51D — vibrator Android integration research handoff
 
-**NOT YET MERGED by Codex into the C54-owned canonical research worktree.**
-Destination: `research/ulefone-gq5012bf1`
-(`LieppOS/LieppOS-ulefone-gq5012bf1-research`). DeepSeek owns C54 vendor/policy/
-research; none of those source/branch/output trees was modified by this campaign.
-No new repository, checkout, Android tree, phone operation or push.
+**NOT YET MERGED.** Destination: `research/ulefone-gq5012bf1`
+(`LieppOS/LieppOS-ulefone-gq5012bf1-research`), owned by DeepSeek during C55.
+That checkout, device/vendor/manifest repositories, kernel repositories and the
+shared Android platform/output were read only. No push, phone, ADB/fastboot,
+flash, reboot or activation. Complete C51C kernel-timeout handoff (toolchain,
+module hashes, CRC/KCFI receipts, ELF-tool correction) is unchanged at tools
+commit `b2e292aa4416198a3d4885f559ab244c83c6e560`.
 
-This replaces the current handoff with focused C51C evidence, not a new audit.
-Complete historical C51/C51B handoffs remain in tools commits80545f8/df8ea6b;
-C52/C53 report their previous summaries were integrated. Frozen C51 JSON/CSV/
-SCAN-SUMMARY remain byte-identical; 77 relationships were not reopened.
+## Source revisions
 
-## Ownership, source revisions and provenance
+| Owner | Start (C51C) | C51D |
+|---|---|---|
+| MediaTek HAL `android/hardware/mediatek/mt6878` | `efae973a60b67bf0df31380eea83b25f3e8f5f0a` | `d560ff4a4183be6094d9ed3dee8142c5684d4586` |
+| Ulefone HAL `android/hardware/ulefone/gq5012bf1` | `72617cde4e647ac908539952fcd7c4f821d94d04` | `2acad919a48a5696739e77c3bc5af961342d2b0e` |
+| Tools `hal-audit/` | `b2e292aa4416198a3d4885f559ab244c83c6e560` | commit containing this file |
+| Kernel (read-only) | `af3ecd85d28614c2ad25c6448cd68634d62c6a33` | unchanged |
+| Ulefone module mirror (read-only) | `b23e82b4deda06d96e84ca3bb84de5e1e1fc11b8` | unchanged |
 
-Kernel recovered clean at C50 `27a31fbc7a70b13efd74b50721147e44f8914e84`, branch
-integration/c49-hardware-source-expansion; Ulefone mirror clean at
-`0e00dda7f53fedd8b83092aca5c3b96542bf255f`, byte-identical old vibrator source.
-The user explicitly confirmed **exclusive kernel + mirror write ownership**.
-Dedicated local branches: `integration/c51c-vibrator-timeout`; no protected C48
-publication branch or C50 history was rewritten. Other agents' trees stayed
-read-only. Canonical combined-kernel-first / provenance-mirror rules were read.
+Branch `integration/c51c-vibrator-timeout` in each owned repository; all were
+clean at start and are clean after commit.
 
-| Owner | C51C commit |
+## 1. Stock vibrator evidence (read-only)
+
+- Stock fragment `vendor/etc/vintf/manifest/vibrator-mtk-default.xml` declares
+  `android.hardware.vibrator` V2 `IVibrator/default` AND `IVibratorManager/default`.
+- Stock rc `vendor/etc/init/vibrator-mtk-default.rc`: service
+  `vendor.vibrator-default /vendor/bin/hw/android.hardware.vibrator-service.mediatek`,
+  class hal, user/group system, no `interface` lines.
+- Stock binary SHA256 `ab4fc6285875b3f6ce70d1a7f15b10465d149fbb34a6c3bd8caa8d2d95b6573a`.
+  NEEDED: libbase, libutils, liblog, libbinder_ndk, android.hardware.vibrator-V2-ndk,
+  libhardware, libhardware_legacy, libc++, libc, libm, libdl. Strings (no
+  disassembly): MediaTek `vendor/mediatek/proprietary/hardware/libvibrator/aidl/default/`
+  `main.cpp`, `Vibrator.cpp`, `VibratorManager.cpp`; BnVibrator + BnVibratorManager;
+  `/sys/class/leds/vibrator` with `activate`/`duration`/`state`, or
+  `/sys/class/timed_output/vibrator/enable`. Manager sync log strings present.
+- Live stock capture (`qwen_hardware/evidence/local/fingerprint-lights-vibrator-live.txt`):
+  framework "Native HAL VibratorManager", `capabilitiesFlags = 11111111` (all
+  eight Manager capability bits), `vibratorIds = [1]`, vibrator 1 capabilities 0,
+  supportedEffects CLICK, DOUBLE_CLICK, TICK, HEAVY_CLICK, TEXTURE_TICK, no
+  primitives. Live service list registers both instances.
+- The `activate/duration/state` files come from the LED transient trigger:
+  AOSP `system/core/rootdir/init.rc` writes `/sys/class/leds/vibrator/trigger
+  "transient"` and later chowns trigger/activate/brightness/duration/state to
+  system. Kernel config: `CONFIG_LEDS_TRIGGER_TRANSIENT=y`. The C50 and C51C
+  regulator-vibrator drivers create no activate/duration/state files themselves.
+- Stock vendor policy `vendor_sepolicy.cil:523`:
+  `genfscon sysfs "/devices/platform/regulator-vibrator/leds/vibrator"` ->
+  `sysfs_vibrator` (plus soc:/odm/timed_output alternatives). Stock ueventd has
+  no vibrator entries. Stock `vibrator.default.so`, `libvibratorutils.so`,
+  stock V2 NDK library are already `EXTRACT_ONLY` in `proprietary-files.txt`.
+- Node: live DT `/regulator-vibrator`, `label = "vibrator"`, `vib-supply` MT6369
+  VIBR LDO (`qwen_hardware/verification/findings/haptics.md`); live sysfs
+  `/sys/devices/platform/regulator-vibrator/{driver,leds/vibrator}`
+  (`slot-b-investigation/02-android-topology.txt`); kernel `mt6878.dts:3993`
+  same label.
+
+## 2. IVibratorManager decision
+
+- Stock IVibrator and IVibratorManager are one process; the Manager returns its
+  own in-process vibrator. Both rc files use `vendor.vibrator-default`.
+  **Coexistence with this service is impossible; replacement is all-or-nothing.**
+- Android 17 framework, actual source: Java
+  `VintfHalVibratorManager.createHalVibratorManager` checks
+  `isDeclared(IVibratorManager/default)`, else `isDeclared(IVibrator/default)` ->
+  `LegacyHalVibratorManager` with one `DEFAULT_VIBRATOR_ID = 0`; native
+  `connectManagerHal` -> `LegacyManagerHalWrapper` (capabilities NONE,
+  SINGLE_VIBRATOR_ID). Matrices 202604/202704 list both interfaces `1-4`.
+- **A Manager is not required.** A truthful one would advertise capabilities 0
+  and one ID with every sync call unsupported, the same as the fallback. None is
+  implemented. Stock's eight sync bits for one DC-driven ERM are not reproduced.
+- **Retain the complete stock service for C55.**
+
+Behavior differences after a future replacement: vibrator id 1 -> 0; prebaked
+effects play via framework fallback waveforms through `on()`; framework `on()`
+above the kernel maximum (5000ms) gets EX_ILLEGAL_ARGUMENT and
+`SetAmplitudeVibratorStep` cancels that vibration (single one-shots >5s and
+all-on repeating loops longer than 5s; loops <=5s request exactly
+`REPEATING_EFFECT_ON_DURATION = 5000`). The ceiling is kept until hardware
+validation; extending requests is a later owner/hardware decision.
+
+## 3. Source defect fixed
+
+C51C production `discoverDriverTimedRegulatorLed("/sys/class/leds")` opened every
+LED class entry and returned the first EACCES. Platform policy gives
+`hal_vibrator` only `sysfs_vibrator` file rw + dir search; `/sys/class/leds` is
+`sysfs_leds` and sibling LEDs have other types, so under enforcing narrow policy
+the service would never start, or would need broad LED access.
+
+C51D `openDriverTimedRegulatorLed(device, label)` (MediaTek `LedSwitch.cpp`):
+O_PATH|O_DIRECTORY open of `/sys/devices/platform/regulator-vibrator`;
+`readlinkat(driver)` basename must be `regulator_vibrator` (unbound -> ENODEV);
+`leds` and `<label>` opened O_PATH|O_DIRECTORY|O_NOFOLLOW (symlink -> ENOTDIR);
+label rejects empty, `.`, `..` and `/`; then unchanged ABI1 checks. Board
+`main.cpp` uses it with `"vibrator"`. Enumerators remain diagnostics/tests only.
+
+## 4. Binder and kernel ABI review
+
+- 24 frozen V2 methods; overrides compile against genuine SDK37 aidl-generated
+  headers (frozen API SHA256 `51161792eba95aee28a92723a1430b235e57e75751c24db04d84f7d83cca318e`,
+  hash `ea8742d6993e1a82917da38b9938e537aa7fcb54`).
+- Registration `AServiceManager_addService(IVibrator/default)` after accepted
+  initial OFF; thread pool max 0, main thread joins. Platform service_contexts
+  already map the instance to `hal_vibrator_service`.
+- Without CAP_ON_CALLBACK, the framework calls `on(ms, null)` and posts completion
+  itself; non-null callbacks are refused (VTS `OnCallbackNotSupported`). After a
+  failed `on()`, `cancelStep()` -> `CompleteEffectVibratorStep` -> `off()` clears
+  the HAL fault latch. Static review of VtsHalVibratorTargetTest capability-0
+  expectations: consistent; V3/V4 methods return UNKNOWN_TRANSACTION (accepted).
+- Kernel agreement (source, not runtime): `timeout_abi` "1\n";
+  `max_duration_ms` "%u\n" = `REG_VIBR_MAX_MS 5000U`; `duration_ms` store
+  `kstrtouint(buf, 10)`, 1..max arms, 0 cancels, >max -EINVAL; read = remaining
+  ms rounded up. HAL writes only "N\n"/"0\n" to duration_ms and validates
+  1..max first. Store detaches the AOSP-selected transient trigger and drains its
+  final OFF before arming. **No kernel defect found; kernel not modified.**
+
+## 5. Tests and receipts (actual)
+
+| Test | Result |
 |---|---|
-| Kernel | `af3ecd85d28614c2ad25c6448cd68634d62c6a33` |
-| Ulefone module provenance mirror | `b23e82b4deda06d96e84ca3bb84de5e1e1fc11b8` |
-| MediaTek HAL | `efae973a60b67bf0df31380eea83b25f3e8f5f0a` |
-| Ulefone HAL | `72617cde4e647ac908539952fcd7c4f821d94d04` |
+| HAL native (ControllerTest 12 + LifecycleTest 24) | 36/36 normal, 36/36 ASan/UBSan |
+| HAL TSan (LifecycleTest) | 24/24 |
+| New C51D native cases | 2: canonical binding/label/symlink/ABI; unreadable sibling LED breaks enumerator (EACCES) but not canonical open |
+| Kernel shared policy (C51C harness) | 12/12 per mode + 4 static order guards |
+| Python hal-audit | 100/100 opt-in, no skips (96 + 4 C51D contract checks); portable 81 pass / 19 skip |
+| Genuine ARM64 object probe | 6/6 ELF64 AArch64 (Controller, LedSwitch, OneShot, DriverTimed, Vibrator, main) |
+| Soong link | DEFERRED, not attempted |
+| Binder IPC / VTS executed | 0 |
+| Hardware | NOT PERFORMED |
 
-Tools changes descend from C51B `df8ea6b640e97b1f131c6c4f747c505717936da8`;
-the commit containing this handoff is identified in the final completion receipt.
-Kernel driver keeps MediaTek's GPL-2.0 notice, with independent LieppOS additions;
-private policy/test code is GPL-2.0. HAL additions remain independent Apache-2.0.
-No firmware, calibration, secret, copied Binder stub or private key was introduced.
-Mirror sync covers **only driver + private header**, with updated per-file hashes,
-counts and scoped canonical commit in SOURCE-MANIFEST.json. Other paths remain
-based on the original C48 snapshot; mirror is not an independent build root.
+C51D contract checks (`tests/test_c51d_integration.py`) pin: single-IVibrator
+fragment; stock binary hash/both Bn classes/both fragment entries; identical init
+service names; framework fallback source; canonical node in stock genfscon;
+platform hal_vibrator/domain rules; no stock ueventd duration_ms entry; kernel
+format strings and HAL parser.
 
-## Actual configuration and decision
+## 6. Soong link — DEFERRED
 
-The real C48/C50 build script copies **configs/c44-reference.config**, SHA256
-`40de208ba474abfac862ada26301d5a8b26490141e8c944ed303a3ccce8fd2fc`.
-It explicitly has REGULATOR_VIBRATOR=m, ONESHOT unset, CFI_CLANG=y,
-MODVERSIONS=y, MODULE_SIG=y, MODULE_SIG_ALL unset. Output olddefconfig is
-**byte-identical**, not merely feature-equivalent.
+C55 was running `m -j32 systemimage systemextimage productimage` in the shared
+`out/` (load average 51-99) throughout. The platform tree contains neither
+`hardware/mediatek/mt6878` nor `hardware/ulefone/gq5012bf1`; linking requires
+adding them, which triggers Soong re-analysis of the shared output. Not done.
+Exact procedure for an owner-approved exclusive window (relative OUT_DIR; no
+product change; namespace not exported to Make, so the intermediate path is the
+target; remove both directories afterwards):
 
-The C51B proposal patched gki_defconfig (SHA2566416f396...), not that recipe's
-input. It is now marked SUPERSEDED/DO NOT APPLY, retained only as history/test
-fixture. LED one-shot code exists, but config enable alone would not fix the old
-driver's swallowed regulator errors, unbounded brightness path, workqueue leaks,
-remove/suspend races or per-trigger attribute recreation/DAC race.
+```sh
+cd /mnt/SamsungSSD/android/lineage-24.0
+mkdir hardware/mediatek/mt6878 hardware/ulefone/gq5012bf1
+git -C ~/LieppOS/android/hardware/mediatek/mt6878 archive d560ff4a4183be6094d9ed3dee8142c5684d4586 | tar -x -C hardware/mediatek/mt6878
+git -C ~/LieppOS/android/hardware/ulefone/gq5012bf1 archive 2acad919a48a5696739e77c3bc5af961342d2b0e | tar -x -C hardware/ulefone/gq5012bf1
+export OUT_DIR=out; source build/envsetup.sh; lunch lineage_gq5012bf1-cp2a-userdebug
+m -j8 out/soong/.intermediates/hardware/ulefone/gq5012bf1/android.hardware.vibrator-service.gq5012bf1/android_vendor_arm64_armv8-a/android.hardware.vibrator-service.gq5012bf1
+rm -r hardware/mediatek/mt6878 hardware/ulefone/gq5012bf1; rmdir hardware/mediatek hardware/ulefone
+```
 
-**Selected Option B only:** driver-owned timeout. No generic trigger/core/config
-change, new core export, DT label, voltage, PMIC timer or hardware rating guessed.
-Implementation and ABI are authoritative at the kernel commit above:
+Record: linker exit status, undefined symbols, `llvm-readelf -d` NEEDED
+(expect libbinder_ndk, libbase, android.hardware.vibrator-V2-ndk, libc++, libc,
+libm, libdl), and the binary hash.
 
-- `drivers/leds/regulator-vibrator.c`
-- `drivers/leds/regulator-vibrator-state.h`
-- `Documentation/ABI/testing/sysfs-class-led-regulator-vibrator`
+## 7. Exact C55/device-owner handoff (do not apply in C55)
 
-## Kernel behavior and failure model
+1. Keep the stock vibrator selected; do not add this package; do not request activation.
+2. Future replacement removes exactly these three stock entries (EXTRACT_ONLY + regenerate):
+   `vendor/bin/hw/android.hardware.vibrator-service.mediatek`,
+   `vendor/etc/init/vibrator-mtk-default.rc`,
+   `vendor/etc/vintf/manifest/vibrator-mtk-default.xml`.
+3. Product: `PRODUCT_SOONG_NAMESPACES += hardware/ulefone/gq5012bf1 hardware/mediatek/mt6878`;
+   `PRODUCT_PACKAGES += android.hardware.vibrator-service.gq5012bf1` (installs module rc + fragment).
+4. ueventd: `/sys/devices/platform/regulator-vibrator/leds/vibrator duration_ms 0664 system system`.
+5. SELinux: no new allow. `BOARD_VENDOR_SEPOLICY_DIRS += hardware/ulefone/gq5012bf1/vibrator/sepolicy`
+   (executable -> `hal_vibrator_default_exec`); keep stock genfscon line; rebuild
+   vendor policy; enforcing only.
+6. Kernel: C51C `regulator-vibrator.ko` (timeout ABI1) is a hard dependency; the
+   stock HAL does not use it. Installation is separately authorized.
+7. Verify: assembled `checkvintf` (IVibratorManager/default no longer declared),
+   registration, IPC, VtsHalVibratorTargetTest, zero vibrator denials.
+8. Hardware (separately authorized): duration rating, regulator fault/suspend/
+   remove/process-death, physical OFF. Only then review `deploymentAllowed()`,
+   `disabled`, `oneshot`.
 
-Static LED attributes exist for the class-device lifetime: `timeout_abi=1`,
-`max_duration_ms=5000`, atomic `duration_ms`, `last_error`. Positive duration
-1..maximum starts; 0 cancels/acknowledges recovered fault. Invalid/overflow input
-leaves the previous bounded request unchanged. Read remaining time is a requested
-state, NOT motor/current measurement. The ceiling is **provisional SOFTWARE
-policy, NOT a validated physical continuous-on/thermal limit**.
+Service linking: **not passed (deferred)**. Product integration: **not safe yet**.
+Hardware activation: **not authorized**.
 
-- CLOCK_BOOTTIME hrtimer is armed before regulator enable. Callback only queues
-  kernel work; sleeping regulator operations and all requests use one mutex.
-  Regulator notifier only records an atomic fault and queues work (no recursive
-  regulator calls/request-lock acquisition).
-- Old queued expiry checks the **current** absolute deadline under that mutex;
-  it cannot cancel a later rearm. A bound kernel timer/work item does not depend
-  on a user fd/thread/process/Binder client surviving SIGKILL/crash.
-- Timed sysfs requests detach periodic triggers and **flush the final old LED-core
-  OFF callback before arming**, preventing a late old OFF from truncating a new
-  request. Suspend likewise drains this work before provider suspension.
-- Legacy positive brightness is also finite (maximum policy duration); legacy
-  method signature/driver name stay intact, but indefinite-ON semantics are
-  intentionally changed. Other privileged periodic writers must not compete.
-- I/O errors propagate; logical activation cancels, re-enable latches, bound/live
-  driver retries failed OFF at250ms. Background recovery does not clear the latch;
-  explicit accepted OFF does. Owned enable refs are balanced; reported still-ON
-  rail/other consumer is EBUSY, not forced disable/fake OFF. Probe does not pulse
-  an OFF rail just to initialize its reference count.
-- Suspend blocks positive requests, cancels timeout and requires checked OFF;
-  failure aborts that callback, retains fault/retry. Resume never resurrects an
-  old request. Teardown stops producers, synchronizes notifier and LED unregister,
-  cancels timer/work outside any mutex the work needs, then tries checked OFF
-  up to3 times with250ms gaps. Dedicated workqueue allocation/leak is removed.
+## 8. Remaining blockers
 
-**Source-supported guarantee:** expiry and OFF attempts independent of userspace
-under a running kernel, normal binding lifetime and functioning regulator APIs.
-**Not a physical hard-deadline guarantee.** Persistent PMIC/I2C failure, a rail held
-by another consumer, kernel hangs/starvation and forced device removal cannot be
-made physically OFF by software. Remove return errors do not veto Linux unbind;
-failed final OFF is critical/logged, not claimed successful. Hardware fault,
-process-death, suspend/remove and duration-rating tests remain unperformed.
-Deployment stays CLOSED.
-
-## Actual kernel build and scoped ABI receipt
-
-No unprotected C50 toolchain path was supplied. The matching compiler was obtained
-from the official Android prebuilt archive at commit
-`425c8149f17c8d9914bf690b4d5abe45a13fb993`, path clang-r487747c:
-`https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/425c8149f17c8d9914bf690b4d5abe45a13fb993/clang-r487747c.tar.gz`.
-Archive SHA256 `10f007a1d5e946fc7c6cb903ec9cc3932d2cad4e3e896cfb1dc1a6b3e30dfdb2`.
-Actual clang-17 SHA256
-`25617ca38946d0e7476025e6fa4c15fb386894b75d9372e63a9f3cec47988ce0`, Android
-10087095 / r487747c /17.0.2, LLD17.0.2: matches the documented C50 version/hash
-prefix. Only needed build inputs were extracted in owned ignored output; no new
-source checkout. No private signing key, disabled protection or stub was needed.
-
-Isolated kernel OUT=out/c51c, source DEVICE_MODULES_PATH=canonical kernel,
-ARCH=arm64 LLVM=1 LLVM_IAS=1 MTK_PLATFORM=mt6878 -j2. Copied unchanged reference
-config; ran **olddefconfig modules_prepare**, then targeted
-**drivers/leds/regulator-vibrator.ko**, with read-only C49 output as
-KBUILD_MIXED_TREE and copied compatible Module.symvers. Genuine compilation,
-modpost and final linkage: **PASS**. Pre-existing Kconfig warnings were retained,
-not suppressed; driver/private-header checkpatch: **0 errors/0 warnings**.
-
-| Result | Actual |
-|---|---|
-| New module SHA256 | `039526f98cc1dc560f372f2104cb5e4bcafe0885359595dad96990e80e489f45` |
-| C50 baseline module SHA256 | `6dbeb0f71f9e1e9f199270f34ee9f366149fcb9b7ea59a23eedb00d2e402d794` |
-| Identity/dependencies | Same regulator_vibrator/GPL/empty depends/vermagic |
-| Vermagic | `6.1.115-mt6878-gq5012bf1-c29+ SMP preempt mod_unload modversions aarch64` |
-| Import CRCs | 32/32 resolve/match C50 core;13 common unchanged;0 unversioned undefineds |
-| Existing callback KCFI tags | 6/6 match (real arm64 preamble words, not a vacuous0 named-symbol count) |
-| New kernel exports | 0 |
-| Kernel Image | NOT rebuilt/modified; reference remains SHA256585080a838140a2c73c8caaae27c60ea6f360c926dc1b25ebc0e3a52c1f3a3d0 |
-
-Scope is **ABI_VERIFIED_OFFLINE for identity/import CRC/six callback tags only**,
-not whole-kernel ABI parity, module loading or hardware. New module intentionally
-differs; original reference hashes/verifier were not edited to hide the delta.
-
-**Validation correction disclosed:** the initial LLVM objcopy --dump-section
-invocation (no output argument) rewrote the C49 baseline ELF container. Its exact
-recorded bytes were restored from the verified identical C48 final-out copy;
-SHA2566dbeb0f7... rechecked. The task's rewritten candidate was deleted/relinked.
-The permanent verifier now parses ELF read-only and asserts all input hashes
-unchanged before/after. Reference Module.symvers stays SHA2563331100038b4a2e528f29e8c2c49217cc2c4ddecdbd3f1f43bebe497684348e6.
-No C54 source/shared Android output was affected by this correction.
-
-Reproduction commands and test scope are in the kernel's existing
-`tools/ulefone/gq5012bf1/README.md` and `tests/vibrator/` beneath it.
-
-## HAL alignment and test receipt
-
-Production now uses `discoverDriverTimedRegulatorLed`/DriverTimed.cpp only;
-requires ABI1 + valid exported maximum + duration attribute, never falls back to
-brightness or one-shot. Single duration transaction replaces six trigger writes.
-Controller and Binder argument validation honor the kernel maximum. Fault/error
-handling and unsupported capability/callback behavior stay truthful.
-
-- **96/96 Python checks**, including all prior94 and two focused C51C checks.
-- HAL native **34/34** normal and ASan/UBSan (original12 + expanded22);
-  expanded **22/22 TSan**. Explicitly fake sysfs tests, not physical timer proof.
-- Kernel's actual portable shared policy: **12/12** normal/ASan-UBSan/TSan plus
-  **4/4 static** integration-order guards. Not execution of Linux timer/regulator
-  APIs. KUnit is configured but no ARM64 runtime/emulator/load test was run.
-- Genuine SDK37 aidl/frozen V2 and real Clang22/Bionic/vendor/VNDK probe:
-  **6/6 ELF64 AArch64 source objects PASS**; NOT linked/Soong/IPC tested.
-  The API SHA256 remains51161792eba95aee28a92723a1430b235e57e75751c24db04d84f7d83cca318e.
-  Generated headers are temporary and embed command paths; no bit-identical raw
-  header promise or checked-in substitute is used.
-
-## Exact C54 owner next actions and closed gates
-
-Current detailed integration contract: board README at the source commit above.
-Keep source module/fragment UNSELECTED and existing code/init gates CLOSED.
-Default system UID/domain, V2/default, module/executable/init names remain unchanged.
-
-1. Validate/install the exact new kernel module under separate authorization;
-   verify real timeout ABI1/effective config/dedicated supply and enforce a
-   hardware-supported duration policy. No physical activation occurred here.
-2. Establish actual DT-label/real-device labels and stable ueventd ownership.
-   Permit metadata/last_error/duration reads plus **duration_ms write only** for
-   system UID/hal_vibrator_default. No trigger/invert/delay/shot/brightness writes,
-   root, DAC override, permissive domain or guessed path is required/supplied.
-3. Resolve stock IVibratorManager/default V2 before replacing the complete stock
-   binary/fragment; source implements IVibrator only, no invented actuator IDs.
-4. Wire exact canonical source revisions once; mark the three stock extraction
-   entries EXTRACT_ONLY and regenerate vendor config at product-definition time.
-   Do not mutate readonly product lists in late BoardConfig or install duplicates.
-5. C53 established **relative OUT_DIR=out works**; absolute OUT_DIR caused the
-   earlier main.star error, not a missing source to fabricate. C54 owns active
-   shared platform/vendor/policy outputs, so C51C did NOT start a concurrent Soong
-   build or repair that checkout. Owner's available-slot target is:
-   OUT_DIR=out; lunch lineage_gq5012bf1-cp2a-userdebug;
-   m -j2 android.hardware.vibrator-service.gq5012bf1.
-6. Complete real service link, assembled VINTF/SKU/APEX checks, enforcing policy
-   and IPC, then separately authorized real hardware/fault/process-death tests.
-   Only after all proofs review a deliberate code/init gate change. No automatic
-   selection, new repository, push, flash, reboot or phone access is authorized.
+- Build: real Soong link and assembled VINTF/policy build not performed.
+- Security: rebuilt vendor policy with executable label; ueventd DAC; enforcing check.
+- ABI: installed kernel must provide timeout ABI1 (C51C module not installed).
+- Runtime: Binder registration/IPC/VTS never executed; framework long-duration behavior is a policy decision.
+- Physical: ERM continuous-on rating, MT6369 VIBR fault behavior, process-death OFF on device.

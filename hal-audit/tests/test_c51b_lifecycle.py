@@ -33,15 +33,16 @@ class C51BLifecycle(unittest.TestCase):
                     fixtures.mkdir()
                     run = subprocess.run([str(binary), str(fixtures)], env=env, capture_output=True, text=True, timeout=30)
                     self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-                    self.assertIn('TOTAL 22/22', run.stdout)
+                    self.assertIn('TOTAL 24/24', run.stdout)
         finally:
             try: parent.rmdir()
             except OSError: pass
 
     def test_deployment_gate_precedes_all_device_io_and_registration(self):
         source = (BOARD / 'vibrator/main.cpp').read_text()
-        self.assertLess(source.index('deploymentAllowed()'), source.index('discoverDriverTimedRegulatorLed('))
-        self.assertLess(source.index('discoverDriverTimedRegulatorLed('), source.index('controller->off()'))
+        self.assertLess(source.index('deploymentAllowed()'), source.index('openDriverTimedRegulatorLed('))
+        self.assertLess(source.index('openDriverTimedRegulatorLed('), source.index('controller->off()'))
+        self.assertNotIn('discoverDriverTimedRegulatorLed(', source)  # C51D: no LED-class enumeration.
         self.assertLess(source.index('controller->off()'), source.index('AServiceManager_addService('))
         self.assertNotIn('discoverRegulatorLed(', source)
         policy = (BOARD / 'vibrator/VibratorPolicy.h').read_text()

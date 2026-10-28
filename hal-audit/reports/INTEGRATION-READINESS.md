@@ -1,24 +1,24 @@
-# C51C — vibrator kernel timeout, deployment CLOSED
+# C51D — vibrator Android integration contract, deployment CLOSED
 
 Only the vibrator status is updated here. The machine JSON/CSV/SCAN-SUMMARY remain
 **frozen C51 input snapshots**, not a fresh C52/C53 inventory. Their original
 79 contracts / 123 records, 48 override reviews and 77 original unresolved init
 relationships are not reopened or rewritten. A fresh explicitly requested CLI run
-uses the new source lens; it must not be mistaken for the retained baseline.
-
-| Current vibrator property | Actual C51C result |
+uses the new source lens; it must not be mistaken for the retain| Current vibrator property | Actual C51D result |
 |---|---|
-| Native source | Driver-owned timeout ABI1 only; exported maximum validation, atomic duration write, no brightness/trigger fallback |
-| Kernel | Real module build/modpost/link PASS, matching Clang17, unchanged C50 config/core exports; canonical-first mirror sync |
-| Kernel guarantee | Source-supported kernel expiry/OFF attempts independent of userspace, with fault retries and teardown synchronization; not physical hard-cutoff proof |
-| Offline ABI | 32/32 import CRCs match core,13 common CRCs/six callback KCFI tags unchanged, no exports, identical vermagic/dependencies |
-| AIDL | Genuine frozen V2; real Clang22/Bionic/vendor+VNDK compile of 6/6 ARM64 objects PASS |
-| Whole service / Soong | NOT linked by C51C; C53 confirms relative OUT_DIR=out works; concurrent C54 shared outputs not used |
-| Tests | 96/96 Python; HAL34/34 normal+ASan/UBSan,22/22 TSan; kernel-policy12/12 each mode+4 static guards |
-| Process death | Kernel owns timer/work; no process cleanup dependency under normal kernel/regulator operation; hardware fault/current/kill tests not performed |
-| Deployment | Unconditionally false code gate before I/O/registration AND disabled+oneshot init; keep module/fragment unselected |
-| Compatibility | C52 reports stock IVibrator AND IVibratorManager/default V2; source implements IVibrator only; no silent Manager drop |
-| Policy / hardware | Actual node labels/ownership, compiled replacement policy, assembled metadata, registration/IPC and physical validation still required |
+| Native source | Timeout ABI1 only; C51D canonical O_PATH device open (`/sys/devices/platform/regulator-vibrator`, label `vibrator`, driver link checked, no LED enumeration) |
+| Defect fixed | C51C enumerator opened every LED and failed closed on the first unreadable one: under narrow enforcing policy the service could never start |
+| Kernel (C51C, unchanged) | Real module build/modpost/link PASS; HAL parser matches committed `timeout_abi`/`max_duration_ms`/`duration_ms` formats; no kernel defect found |
+| AIDL / Binder | Genuine frozen V2 (24 methods); 6/6 ARM64 objects compile; framework `on(ms,null)` path, cancel->`off()` latch recovery and VTS capability-0 expectations statically consistent |
+| Whole service / Soong | **DEFERRED**: platform tree lacks these repos and C55 owns the active shared build; exact reversible procedure in board README |
+| IVibratorManager | Stock binary serves IVibrator+IVibratorManager V2 (`vibratorIds=[1]`, Manager caps 11111111); framework falls back to one default vibrator without Manager; single-IVibrator all-or-nothing replacement; no Manager implemented |
+| Behavior delta vs stock | id 1->0; framework fallback for prebaked effects; framework `on()` >5000ms rejected (vibration cancelled) until a hardware-validated duration policy |
+| SELinux | No new allow: stock genfscon labels node `sysfs_vibrator`, platform `hal_vibrator` rw + dir search, domain sysfs search/lnk read. Needs executable file_contexts in rebuilt vendor policy |
+| DAC | Missing: ueventd `duration_ms 0664 system system` on the canonical device path |
+| Tests | 100/100 Python; HAL 36/36 normal+ASan/UBSan, 24/24 TSan; kernel-policy 12/12 each mode; Binder IPC 0 executed |
+| Deployment | Code gate false + disabled/oneshot init; stock selected; package unselected; hardware NOT validated |
+
+l required |
 
 Exact current integration instructions: `android/hardware/ulefone/gq5012bf1/README.md`.
 Kernel evidence: `android/hardware/mediatek/mt6878/vibrator/SAFETY.md` and canonical kernel timeout ABI documentation. The old generic-trigger config proposal is SUPERSEDED/DO NOT APPLY; actual reference config keeps ONESHOT unset.

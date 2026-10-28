@@ -75,8 +75,10 @@ class C51Source(unittest.TestCase):
         self.assertIn('user system', rc)
         self.assertNotIn('user root', rc)
         source = (BOARD / 'vibrator/main.cpp').read_text()
-        self.assertIn('"/sys/class/leds"', source)
-        self.assertNotIn('/sys/class/leds/vibrator/', source)
+        # C51D: canonical device evidenced by live DT/sysfs and stock genfscon;
+        # no LED-class enumeration (would need broad sysfs_leds/other-LED access).
+        self.assertIn('"/sys/devices/platform/regulator-vibrator", "vibrator"', source)
+        self.assertNotIn('"/sys/class/leds', source)
         self.assertIn('controller->off()', source)
         self.assertIn('AServiceManager_addService', source)
         self.assertNotIn('setenforce', source)
