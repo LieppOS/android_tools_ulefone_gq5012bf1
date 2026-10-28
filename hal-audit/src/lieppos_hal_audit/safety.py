@@ -10,7 +10,7 @@ SKIP_DIRS = {'.git', '.repo', '__pycache__', 'node_modules', 'out', 'prebuilt',
              'firmware', 'nvram', 'calibration', 'keys', 'private', '.venv', 'kernel', 'androido_dalykai'}
 TEXT_SUFFIXES = {'.xml', '.rc', '.bp', '.mk', '.te', '.cpp', '.cc', '.c', '.h',
                  '.java', '.aidl', '.hal', '.md', '.csv', '.patch', '.sh'}
-TEXT_NAMES = {'proprietary-files.txt', 'file_contexts', 'genfs_contexts',
+TEXT_NAMES = {'LICENSE', 'proprietary-files.txt', 'file_contexts', 'genfs_contexts',
               'service_contexts', 'hwservice_contexts', 'property_contexts',
               'hals.conf', 'recovery.fstab'}
 SENSITIVE = re.compile(r'(private.?key|calibrat|(^|[._-])(secret|nvram|keybox)([._-]|$))', re.I)

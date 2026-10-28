@@ -4,6 +4,16 @@ Read-only Python 3.10+ / Linux integration auditor. Standard-library runtime; no
 
 **Ownership:** only `tools/ulefone/gq5012bf1/hal-audit/` in the existing tools checkout. This is a specialized derived audit, not a replacement for `inventory/subsystems.csv` or the authoritative research repository. Nothing here changes Android configuration.
 
+## C51 continuation
+
+The existing validator is reused. One real timed vibrator source implementation now lives in `android/hardware/ulefone/gq5012bf1/vibrator/`, using the native backend in `android/hardware/mediatek/mt6878/vibrator/`. These are existing source owners, not new checkouts. The source owner READMEs contain exact activation requirements and the process-death timeout safety blocker. Device/vendor activation is not applied.
+
+Current scan: 80 contracts (79 historical + one new source fragment), one source-mapped service, 77 historical init relationships still `MISSING_METADATA`, and all 48 explicit override overlaps reviewed as intentional at source level. `init_relationships` and `vintf_review` provide individual classifications without a fake libvintf PASS. Helper rc processes are not automatically assumed to be HAL servers. Static `validation_properties` do not infer executed unit/Soong/VTS/hardware results; actual receipts are in the research handoff.
+
+C51 native backend tests pass 12/12 normally and under ASan/UBSan; the full Python suite passes 90/90 (original 78 + 12 new). The genuine Android Binder adapter is not compiled: target Soong/generated NDK headers are absent. No counterfeit generated header is used.
+
+`tests/fixtures/IVibrator-V2.aidl` is an **UPSTREAM_ORIGINAL** immutable API test snapshot, Apache-2.0 with AOSP notices retained, from LineageOS `android_hardware_interfaces` commit `13fc23dae0dcd24fc2411d74f54a407999eaf555`; SHA-256 `51161792eba95aee28a92723a1430b235e57e75751c24db04d84f7d83cca318e`. The full required license text is preserved alongside it in `tests/fixtures/LICENSE.apache-2.0`. It is not a local AIDL module or a duplicate HAL implementation.
+
 ## Run without installing
 
 From this directory:
@@ -85,13 +95,14 @@ Inputs are opened through directory file descriptors with `O_NOFOLLOW`; output p
 ## Tests
 
 ```sh
-# Portable synthetic suite: 73 passed; five local integration tests skipped.
+# Portable synthetic/classifier suite: 81 passed; nine local checks skipped.
 PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -v
 
 # Explicitly opt into the six authorized roots and documented C46 evidence:
-LIEPPOS_REAL_SOURCE_TESTS=1 PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 \
+LIEPPOS_REAL_SOURCE_TESTS=1 LIEPPOS_C51_SOURCE_TESTS=1 \
+  PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 \
   python3 -B -m unittest discover -s tests -v
-# Recorded result: 78/78 passed, no skips.
+# Recorded result: 90/90 passed, no skips (including 12-case native runs twice).
 ```
 
 Tests use temporary files only under ignored `.tmp/` in this project and remove them. No caches/build outputs belong in Git. See readiness for the observed results and unresolved device integration questions.

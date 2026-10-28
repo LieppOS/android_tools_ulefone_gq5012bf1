@@ -5,21 +5,24 @@
 ## Totals
 
 - records: 123
-- declaration_records: 127
-- unique_declared_contracts: 79
-- source_implemented_records: 0
+- declaration_records: 128
+- unique_declared_contracts: 80
+- source_implemented_records: 1
 - proprietary_reference_records: 56
-- proprietary_classified_artifact_records: 36
+- proprietary_classified_artifact_records: 35
 - unresolved_records: 87
 - source_helper_modules: 5
 - historical_started_process_records: 11
 - hardware_verified_records: 0
+- init_relationships_resolved: 1
+- init_relationships_remaining: 77
+- init_classification_counts: {'MISSING_METADATA': 77, 'RESOLVED_SERVICE': 1}
 
 ## Input scope
 
 - `/home/armol/LieppOS/android/device/ulefone/gq5012bf1`: 19 eligible text files
-- `/home/armol/LieppOS/android/hardware/mediatek/mt6878`: 0 eligible text files
-- `/home/armol/LieppOS/android/hardware/ulefone/gq5012bf1`: 0 eligible text files
+- `/home/armol/LieppOS/android/hardware/mediatek/mt6878`: 7 eligible text files
+- `/home/armol/LieppOS/android/hardware/ulefone/gq5012bf1`: 9 eligible text files
 - `/home/armol/LieppOS/android/vendor/lieppos`: 113 eligible text files
 - `/home/armol/LieppOS/android/vendor/mediatek/mt6878`: 0 eligible text files
 - `/home/armol/LieppOS/android/vendor/ulefone/gq5012bf1`: 0 eligible text files
@@ -160,7 +163,7 @@ OVERRIDE_OVERLAP is an ODM/vendor merge review, not a confirmed duplicate error.
 | Ulefone-specific hardware | UNKNOWN | UNKNOWN | UNKNOWN | PROPRIETARY_IMPLEMENTATION |
 | Ulefone-specific hardware | UNKNOWN | UNKNOWN | UNKNOWN | PROPRIETARY_IMPLEMENTATION |
 | Ulefone-specific hardware | UNKNOWN | UNKNOWN | UNKNOWN | PROPRIETARY_IMPLEMENTATION |
-| Vibrator/haptics | UNKNOWN | UNKNOWN | UNKNOWN | PROPRIETARY_IMPLEMENTATION |
+| Vibrator/haptics | android.hardware.vibrator.IVibrator | 2 | default | IMPLEMENTED_IN_SOURCE |
 | Wi-Fi | UNKNOWN | UNKNOWN | UNKNOWN | UNKNOWN |
 | Wi-Fi | UNKNOWN | UNKNOWN | UNKNOWN | PROPRIETARY_IMPLEMENTATION |
 | Wi-Fi | UNKNOWN | UNKNOWN | UNKNOWN | PROPRIETARY_IMPLEMENTATION |

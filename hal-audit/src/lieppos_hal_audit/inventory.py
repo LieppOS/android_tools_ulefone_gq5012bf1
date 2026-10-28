@@ -8,7 +8,7 @@ from .android_bp import parse_bp
 from .init_rc import parse_init
 from .proprietary_files import parse_proprietary
 from .safety import scan_text, checked_path
-from .vintf import parse_xml
+from .vintf import parse_xml, review_declarations
 
 COLUMNS = ['subsystem', 'interface', 'version', 'instance', 'transport', 'vintf_source',
            'init_service', 'executable', 'source_repository', 'source_path', 'implementation_status',
@@ -113,7 +113,7 @@ def audit(roots):
     for identity, entries in sorted(groups.items()):
         d = entries[0]
         linked_modules = [m for m in modules if 'vintf_fragments' not in m['unresolved_properties'] and any(os.path.normpath(str(Path(m['source']).parent / frag)) == e['vintf_source'] for frag in m['properties'].get('vintf_fragments', []) for e in entries)]
-        linked_services = [s for s in services if any(matches(d, i) for i in s['interfaces']) or any(os.path.normpath(str(Path(m['source']).parent / rc)) == s['source'] for m in linked_modules for rc in m['properties'].get('init_rc', []))]
+        linked_services = [s for s in services if any(matches(d, i) for i in s['interfaces']) or any(Path(s['executable']).name == m['stem'] and os.path.normpath(str(Path(m['source']).parent / rc)) == s['source'] for m in linked_modules for rc in m['properties'].get('init_rc', []))]
         candidates = [b for b in blobs if '/bin/' in b['path'] and binary_matches(d['package'], Path(b['path']).name)]
         # Filename candidates do not establish an interface<->process relationship.
         source_modules = [m for m in linked_modules if m['source_status'] == 'IMPLEMENTED_IN_SOURCE']
@@ -189,8 +189,47 @@ def audit(roots):
                   init_services=services, modules=modules, proprietary_entries=blobs,
                   references=references, permission_references=permissions, kernel_path_references=kernel_paths, diagnostics=diagnostics,
                   provenance=[dict(path=p, sha256=i['sha256'], root=i['root']) for p,i in sorted(files.items())])
+    result['vintf_review'] = review_declarations(declarations)
+    classify_relationships(result)
     summarize(result)
     return result
+
+
+def classify_relationships(result):
+    """Source relationships, not runtime claims. No inference from filenames alone."""
+    service_contracts = defaultdict(set)
+    for row in result['inventory']:
+        for service in row['init_definitions']:
+            service_contracts[(service['source'], service['name'])].add((row['interface'], row['instance'], row['version']))
+    relationships = []
+    for row in result['inventory']:
+        if row['transport'] == 'passthrough':
+            row['init_requirement'] = 'NO_STANDALONE_SERVICE_REQUIRED_BY_PASSTHROUGH'
+            continue
+        tags = []
+        resolved = bool(row['init_definitions'])
+        if resolved:
+            tags.append('RESOLVED_SERVICE')
+            if any(len(service_contracts[(s['source'], s['name'])]) > 1 for s in row['init_definitions']): tags.append('SHARED_SERVICE')
+            lazy_code = any('AServiceManager_registerLazyService' in ref['text'] for m in row['modules'] for ref in m['registration_references'])
+            if lazy_code and any(s['disabled'] and s['oneshot'] and s['interfaces'] for s in row['init_definitions']): tags.append('LAZY_SERVICE')
+            if any(s['executable'].startswith(('/system/', '/system_ext/', '/product/')) for s in row['init_definitions']) and any(d['manifest_type'] == 'framework' for d in row['declarations']): tags.append('FRAMEWORK_OWNED')
+            if any(s['executable'].lstrip('/') in [b['path'], *b['aliases']] and not b['extract_only'] for s in row['init_definitions'] for b in result['proprietary_entries']) and not row['properties']['IMPLEMENTED_IN_SOURCE']: tags.append('PROPRIETARY_SERVICE')
+        else:
+            tags.extend(['MISSING_METADATA', 'UNRESOLVED'])
+        if not row['properties']['IMPLEMENTED_IN_SOURCE']: tags.append('SOURCE_UNAVAILABLE')
+        primary = next((tag for tag in ['SHARED_SERVICE', 'LAZY_SERVICE', 'FRAMEWORK_OWNED', 'PROPRIETARY_SERVICE', 'RESOLVED_SERVICE'] if tag in tags), 'MISSING_METADATA')
+        relation = dict(interface=row['interface'], version=row['version'], instance=row['instance'],
+            format=row['declarations'][0]['format'], classification=primary, categories=tags,
+            resolved_in_source=resolved,
+            service_definitions=[dict(name=s['name'], executable=s['executable'], source=s['source'], line=s['line']) for s in row['init_definitions']],
+            unverified_process_candidates=[dict(name=b['init_reference'], executable=b['path'], source=b['source'], line=b['line']) for b in row['binary_candidates'] if b['init_reference'] != 'UNKNOWN'],
+            evidence=[dict(source=d['vintf_source'], line=d['line']) for d in row['declarations']],
+            scope='Exact parsed source relationship only; SOURCE_UNAVAILABLE means no matching local source, not global absence')
+        row['init_relationship'] = relation
+        row['notes'] += ' Source init classification: ' + primary + '; not runtime evidence.'
+        relationships.append(relation)
+    result['init_relationships'] = relationships
 
 
 def summarize(result):
@@ -203,4 +242,7 @@ def summarize(result):
         source_helper_modules=len(result.get('source_helpers', [])),
         historical_started_process_records=sum(r['properties']['SERVICE_STARTED'] is True for r in result['inventory']),
         hardware_verified_records=sum(r['properties']['HARDWARE_VERIFIED'] is True for r in result['inventory']),
+        init_relationships_resolved=sum(r['resolved_in_source'] for r in result.get('init_relationships', [])),
+        init_relationships_remaining=sum(not r['resolved_in_source'] for r in result.get('init_relationships', [])),
+        init_classification_counts=dict(sorted(Counter(r['classification'] for r in result.get('init_relationships', [])).items())),
         diagnostic_counts=dict(sorted(Counter(d['code'] for d in result['diagnostics']).items())))

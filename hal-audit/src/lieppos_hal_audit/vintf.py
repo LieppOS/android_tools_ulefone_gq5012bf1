@@ -57,3 +57,31 @@ def parse_xml(text, path, diagnostic):
                          version_origin='explicit' if hal.findall('version') or fmt == 'hidl' else 'aidl-default-1')
             (requirements if root.tag == 'compatibility-matrix' else declarations).append(entry)
     return declarations, requirements
+
+
+def review_declarations(declarations):
+    """Explain lexical overlap intent; NEVER simulate a libvintf partition merge."""
+    from collections import defaultdict
+    exact, identities = defaultdict(list), defaultdict(list)
+    for d in declarations:
+        exact[(d['interface'], d['instance'], d['format'], d['version'])].append(d)
+        identities[(d['interface'], d['instance'])].append(d)
+    overlaps, coexistence = [], []
+    for contract, entries in sorted(exact.items()):
+        if len(entries) < 2: continue
+        classification = 'INTENTIONAL_OVERRIDE' if any(e['override'] for e in entries) and any(not e['override'] for e in entries) else 'DUPLICATE_DECLARATION_REVIEW'
+        overlaps.append(dict(interface=contract[0], instance=contract[1], format=contract[2], version=contract[3],
+            classification=classification,
+            evidence=[dict(source=e['vintf_source'], line=e['line'], override=e['override']) for e in entries],
+            validation='NEEDS_PLATFORM_VALIDATION',
+            reason='Exact contract with explicit override attribute; declaration intent is not assembled-product validation' if classification == 'INTENTIONAL_OVERRIDE' else 'Product selection/merge order unavailable'))
+    for identity, entries in sorted(identities.items()):
+        if len({e['format'] for e in entries}) > 1:
+            coexistence.append(dict(interface=identity[0], instance=identity[1],
+                classification='DISTINCT_PROTOCOL_IDENTITIES_REVIEWED',
+                evidence=[dict(source=e['vintf_source'], line=e['line'], format=e['format'], version=e['version']) for e in entries],
+                reason='HIDL and AIDL contracts are not the same wire identity; text similarity alone proves no conflict',
+                validation='NEEDS_PLATFORM_VALIDATION'))
+    return dict(overlaps=overlaps, mixed_transport=coexistence,
+                platform_validation='NOT_RUN', confirmed_platform_conflicts=None,
+                scope='Source-level intent review; no framework/SKU/APEX/partition merge or compatibility PASS')

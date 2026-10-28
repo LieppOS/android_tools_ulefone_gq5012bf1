@@ -33,7 +33,7 @@ def parse_init(text, path, diagnostic):
                     diagnostic('MALFORMED_INIT', path, number, 'Service lacks executable')
                     continue
                 current = dict(name=parts[1], executable=parts[2], args=parts[3:], source=path,
-                               line=number, interfaces=[], seclabel='UNKNOWN', user='UNKNOWN', groups=[], disabled=False)
+                               line=number, interfaces=[], seclabel='UNKNOWN', user='UNKNOWN', groups=[], disabled=False, oneshot=False)
                 services.append(current)
             elif parts[0] == 'import':
                 diagnostic('INIT_IMPORT_UNRESOLVED', path, number, 'Import recorded only; scanned roots determine scope')
@@ -56,4 +56,6 @@ def parse_init(text, path, diagnostic):
                 current['groups'] = parts[1:]
             elif parts[0] == 'disabled':
                 current['disabled'] = True
+            elif parts[0] == 'oneshot':
+                current['oneshot'] = True
     return services

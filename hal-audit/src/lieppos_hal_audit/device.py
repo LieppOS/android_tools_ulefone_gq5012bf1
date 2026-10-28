@@ -83,7 +83,8 @@ def apply_device_coverage(result):
             result['inventory'].append(artifact_record(subsystem(b['path']), b))
             mapped_artifacts.add(b['path'])
     # Source-built auxiliary consumers are not server HAL implementations.
-    result['source_helpers'] = [m for m in result['modules'] if m['source_status'] == 'IMPLEMENTED_IN_SOURCE']
+    server_modules = {(m['source'], m['name']) for r in result['inventory'] for m in r['modules']}
+    result['source_helpers'] = [m for m in result['modules'] if m['source_status'] == 'IMPLEMENTED_IN_SOURCE' and m['kind'] in {'cc_binary', 'android_app', 'sh_binary'} and (m['source'], m['name']) not in server_modules]
     for row in result['inventory']:
         row.setdefault('proprietary_reference', bool(row['binary_candidates']))
         row.setdefault('source_availability', 'SOURCE_IMPLEMENTATION' if row['properties']['IMPLEMENTED_IN_SOURCE'] else
@@ -111,6 +112,24 @@ def apply_device_coverage(result):
             for b in result['proprietary_entries'] if binaries.intersection(b['dependency_of'])]
         if row['runtime_dependency_references']:
             row['proprietary_dependency'] += '; ' + '; '.join(b['path'] for b in row['runtime_dependency_references'])
+        if any(m['name'] == 'android.hardware.vibrator-service.gq5012bf1' and m['source_status'] == 'IMPLEMENTED_IN_SOURCE' for m in row['modules']):
+            # Old blob filename matches are not dependencies of the new source.
+            row['stock_runtime_dependency_references'] = row['runtime_dependency_references']
+            row['runtime_dependency_references'] = []
+            row['proprietary_dependency'] = 'NONE_IN_SELECTED_HAL_USERSPACE_SOURCE; kernel/regulator hardware boundary remains'
+            implementation_modules = row['modules'] + [m for m in result['modules'] if m['name'] == 'libmtk_regulator_vibrator']
+            implementation_files = sorted({p for m in implementation_modules for p in m['source_files']})
+            row['source_path'] = '; '.join(implementation_files)
+            row['source_coverage'] = dict(origin='INDEPENDENT', license='Apache-2.0 (module license metadata)',
+                implementation_files=implementation_files,
+                canonical_repository='LieppOS/android_hardware_ulefone_gq5012bf1',
+                backend_repository='LieppOS/android_hardware_mediatek_mt6878',
+                classification='SOURCE_AVAILABLE_HAL_CODE_NOT_WHOLE_STACK',
+                build_dependencies=['android.hardware.vibrator-V2-ndk', 'libbinder_ndk', 'libbase', 'libmtk_regulator_vibrator'],
+                remaining='Target Soong build, actual sysfs policy/ownership and crash fail-safe; device/vendor activation not applied')
+            row['validation_properties'] = dict(SOURCE_IMPLEMENTED=True, UNIT_TESTED=None, SOONG_BUILD_PASSED=None,
+                VINTF_VALIDATED=None, PLATFORM_INTEGRATED=None, HARDWARE_VERIFIED=None)
+            row['notes'] += ' C51 source candidate, not activated. Static scan cannot certify tests/builds. Old stock binary candidates are not source dependencies.'
     result['coverage'] = coverage
     result['inventory'].sort(key=lambda r: (r['subsystem'], r['interface'], r['version'], r['instance'], r['executable']))
     summarize(result)

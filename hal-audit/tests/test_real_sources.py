@@ -40,7 +40,10 @@ class RealSources(unittest.TestCase):
         result = json.loads(json.dumps(self.one))
         apply_device_coverage(result)
         self.assertTrue(validate_report(result))
-        self.assertEqual(result['summary']['source_implemented_records'], 0)
+        # C51 adds one explicit source candidate. Preserve the original gate:
+        # none of the previously unmapped contracts may become fake source PASS.
+        legacy_rows = [r for r in result['inventory'] if r['interface'] != 'android.hardware.vibrator.IVibrator']
+        self.assertEqual(sum(r['properties']['IMPLEMENTED_IN_SOURCE'] is True for r in legacy_rows), 0)
         self.assertEqual(result['summary']['hardware_verified_records'], 0)
         self.assertEqual(len(result['coverage']), 24)
 
