@@ -126,10 +126,11 @@ def apply_device_coverage(result):
                 backend_repository='LieppOS/android_hardware_mediatek_mt6878',
                 classification='SOURCE_AVAILABLE_HAL_CODE_NOT_WHOLE_STACK',
                 build_dependencies=['android.hardware.vibrator-V2-ndk', 'libbinder_ndk', 'libbase', 'libmtk_regulator_vibrator'],
-                remaining='Target Soong build, actual sysfs policy/ownership and crash fail-safe; device/vendor activation not applied')
+                kernel_timeout_dependency='Linux LED oneshot protocol in source; effective config, lifetime and physical cutoff unverified' if any(p.endswith('/vibrator/OneShot.cpp') for p in implementation_files) else 'UNKNOWN',
+                remaining='Target Soong/linking, kernel expiry/lifetime and duration policy, actual sysfs access, stock Manager contract and hardware validation; activation not applied')
             row['validation_properties'] = dict(SOURCE_IMPLEMENTED=True, UNIT_TESTED=None, SOONG_BUILD_PASSED=None,
                 VINTF_VALIDATED=None, PLATFORM_INTEGRATED=None, HARDWARE_VERIFIED=None)
-            row['notes'] += ' C51 source candidate, not activated. Static scan cannot certify tests/builds. Old stock binary candidates are not source dependencies.'
+            row['notes'] += ' Source candidate, not activated. Static scan cannot certify tests/builds or kernel expiry. See source safety gate and research test receipts. Old stock binary candidates are not source dependencies.'
     result['coverage'] = coverage
     result['inventory'].sort(key=lambda r: (r['subsystem'], r['interface'], r['version'], r['instance'], r['executable']))
     summarize(result)

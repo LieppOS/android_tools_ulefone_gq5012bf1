@@ -1,4 +1,31 @@
-# C51 — Android 17 HAL source integration readiness
+# C51B — vibrator source continuation, deployment CLOSED
+
+Only the vibrator status is updated here. The machine JSON/CSV/SCAN-SUMMARY remain
+**frozen C51 input snapshots**, not a fresh C52/C53 inventory. Their original
+79 contracts / 123 records, 48 override reviews and 77 original unresolved init
+relationships are not reopened or rewritten. A fresh explicitly requested CLI run
+uses the new source lens; it must not be mistaken for the retained baseline.
+
+| Current vibrator property | Actual C51B result |
+|---|---|
+| Native source | Timed-only Linux LED oneshot path; no brightness-on fallback; fault latch, immediate OFF retry, null/discovery/error handling corrected |
+| Kernel guarantee | Conditional source argument only; effective ONESHOT config, driver lifetime/regulator behavior and safe duration policy unverified |
+| AIDL | Genuine SDK37 aidl generated frozen V2; real Clang22/Bionic/vendor+VNDK compile of 5/5 arm64 source objects PASS |
+| Whole service / Soong | NOT linked; targeted Soong bootstrap exited 1 at missing build/soong/config/main.star; C53 owns repair/wiring |
+| Tests | 94/94 Python; 12 original + 17 lifecycle native cases normal and ASan/UBSan; 17/17 TSan |
+| Process death | SIGTERM/SIGKILL/SIGABRT host simulations demonstrate legacy failure; do not certify kernel/hardware |
+| Deployment | Unconditionally false code gate before I/O/registration AND disabled+oneshot init; keep module/fragment unselected |
+| Compatibility | C52 reports stock IVibrator AND IVibratorManager/default V2; source implements IVibrator only; no silent Manager drop |
+| Policy / hardware | Actual node labels/ownership, compiled replacement policy, assembled metadata, registration/IPC and physical validation still required |
+
+Exact current integration instructions: `android/hardware/ulefone/gq5012bf1/README.md`.
+Kernel evidence and unapplied config proposal: `android/hardware/mediatek/mt6878/vibrator/SAFETY.md`.
+Current source revisions/test receipts and the **unmerged** research handoff:
+`../docs/RESEARCH-HANDOFF.md`. C52's earlier stock-only checks are not C51B validation.
+
+---
+
+# Retained C51 baseline — historical, superseded above for vibrator only
 
 **Result: SOURCE INTEGRATION PARTIAL. One real timed vibrator implementation is present; Android service compilation, platform activation and hardware verification are not complete.**
 

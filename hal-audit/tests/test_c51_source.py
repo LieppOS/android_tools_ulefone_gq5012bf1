@@ -24,7 +24,7 @@ class C51Source(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory(dir=parent) as tmp:
                 base = Path(tmp)
-                sources = [MTK / 'vibrator/Controller.cpp', MTK / 'vibrator/LedSwitch.cpp', MTK / 'vibrator/tests/ControllerTest.cpp']
+                sources = [MTK / 'vibrator/Controller.cpp', MTK / 'vibrator/LedSwitch.cpp', MTK / 'vibrator/OneShot.cpp', MTK / 'vibrator/tests/ControllerTest.cpp']
                 for mode, flags in [('native', []), ('sanitized', ['-fsanitize=address,undefined', '-fno-omit-frame-pointer'])]:
                     binary = base / mode
                     cmd = [os.environ.get('CXX', COMPILER), '-std=c++17', '-pthread', '-Wall', '-Wextra', '-Werror', '-O1', '-g', *flags,

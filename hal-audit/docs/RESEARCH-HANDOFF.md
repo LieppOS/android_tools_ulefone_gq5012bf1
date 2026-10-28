@@ -1,6 +1,185 @@
-# Research handoff — C51 Android 17 HAL source
+# Research handoff — C51B vibrator continuation
 
-**NOT YET INTEGRATED into the canonical research repository.** Claude owns concurrent C50 research changes. This is the existing single handoff, prepared for later import into `LieppOS/LieppOS-ulefone-gq5012bf1-research`; no research checkout/branch was modified or copied.
+**C51B NOT YET MERGED into the C53-owned canonical research worktree by Codex.**
+DeepSeek owns C53 platform/device/vendor/research recovery. Destination remains
+`LieppOS/LieppOS-ulefone-gq5012bf1-research` (`research/ulefone-gq5012bf1`).
+C52 reports that its earlier C51 summary was integrated at research commit
+`dadede0f74edaa884f2cce6b77cbc885cddc3675`; that does not merge these C51B results.
+No research checkout, other agent branch/output, platform or kernel source was
+modified. No push or phone operation occurred.
+
+## C51B recovery and exact source revisions
+
+The three assigned worktrees were recovered on `integration/c51b-vibrator`, with
+unstaged/untracked C51B source and no staged work/index locks. HEADs were exactly
+the C51 baselines d8a26a8 / 92f95b0 / 80545f8. Nothing was reset, discarded or blindly
+reapplied. The interrupted correction to deterministic caller fault injection was
+preserved. Recovery tests were already **94/94 PASS**, beyond the C51 90 baseline.
+
+| Source owner | C51B commit | Tree |
+|---|---|---|
+| `android_hardware_mediatek_mt6878` | `1957904697f7eec67b42c3a46b9b86a5761da779` | `a04942aee7a1410a56ffdf97d590d187c58b545f` |
+| `android_hardware_ulefone_gq5012bf1` | `88aac5431cdb2e2599411658d6e71dc233ab2bb6` | `cec737485c17a23de683fba10e807ce58737c026` |
+
+Both preserve their respective C51 parents. Tools C51B changes are the commit
+containing this handoff, parent `80545f8775e0695840a7640bb16faddc8be0f845`;
+its full SHA is in the final completion receipt. Native source remains INDEPENDENT,
+LieppOS Contributors, Apache-2.0; no generated headers, binaries, firmware,
+calibration, keys or proprietary implementation bodies were imported.
+
+## Verified timeout/lifecycle findings
+
+Full source references/hashes, 14-scenario failure model and kernel-owner request
+are in `android/hardware/mediatek/mt6878/vibrator/SAFETY.md` at the commit above.
+
+- Existing regulator-vibrator brightness has no kernel-owned timeout. An hrtimer
+  include is not timer initialization. The new host SIGTERM/SIGKILL/SIGABRT tests
+  show a fake brightness node remains ON after process death; restarted mandatory
+  OFF repairs it. **Not a real device watchdog test.**
+- Existing `ledtrig-oneshot.c` / `led-core.c` implement a kernel-owned finite shot
+  independent of the userspace process. With invert=0 and positive delay_on/off,
+  the timer ends OFF. **delay_off=0 instead means indefinite ON**. A shot while a
+  previous shot is pending is ignored; cancel before rearm is necessary.
+- New `OneShot.cpp` uses exact-driver discovery, requires advertised oneshot and
+  verifies active `[oneshot]`. Serialized writes: brightness=0, trigger=oneshot,
+  invert=0, delay_on=requested milliseconds, delay_off=1, shot=1 **last**. It never
+  emits brightness=1 or falls back to the unsafe diagnostic switch. Configuration
+  and partial-write errors propagate. A failed shot write might already have
+  armed a finite pulse; controller immediately attempts OFF, never reports success.
+- Successful kernel shots no longer arm a competing normal userspace deadline:
+  kernel turn-on begins on a later tick, and the earlier user deadline could
+  shorten the requested pulse. User timers remain only for legacy diagnostic
+  behavior and failed-I/O cleanup. Faults latch re-enable until explicit successful
+  OFF, failed standalone OFF now arms retry, failed replacement stops immediately
+  rather than preserving a distant deadline, null partial init returns ENODEV.
+- The inspected gki_defconfig does not select ONESHOT. The **unapplied** review-only
+  `oneshot-config-proposal.patch` adds CONFIG_LEDS_TRIGGER_ONESHOT=y to existing
+  GPL kernel code. Fixture-only dry-run passes; no kernel worktree is modified.
+- Guarantee is CONDITIONAL: correct loaded kernel/trigger, stable binding,
+  exclusive authorized writer, running scheduler/workqueues and working regulator
+  OFF. Physical/current feedback is not available through this driver. Kernel
+  remove/probe-unwind/workqueue/notifier/suspend lifetime defects require owner
+  review/fix. The finite signed-32-bit API bound is not a validated safe physical
+  continuous-vibration limit; owner must establish a duration policy before release.
+- **Process-death safety remains BLOCKED for deployment.** No custom PMIC timer,
+  register, DT label, physical limit or independent watchdog process is invented.
+
+## Actual interface/build receipt
+
+The existing full platform is identified by read-only C52 coordination evidence
+`docs/integration/C52-DEVICE-VENDOR-INTEGRATION.md` (SHA-256
+`6380a7c76bc7d57b4228c43a2bb56cd1db374e32d81ebf32e9c955b7f7f08527`), not by a
+filesystem-wide search. Canonical `android/` is presently integration-only.
+
+From `/mnt/SamsungSSD/android/lineage-24.0`, the real targeted request was:
+
+```sh
+TARGET_PRODUCT=lineage_gq5012bf1 TARGET_RELEASE=cp2a TARGET_BUILD_VARIANT=userdebug \
+  OUT_DIR=<owned-temporary>/soong TMPDIR=<owned-temporary> \
+  GOCACHE=<owned-temporary>/gocache GOMAXPROCS=2 \
+  bash build/soong/soong_ui.bash --make-mode -j2 android.hardware.vibrator-service.gq5012bf1
+```
+
+Network Go fetching was disabled; all build/cache output was isolated under the
+existing ignored tooling `.tmp/` and removed. No C53 output/locks were reused.
+Product evaluation ran; bootstrap exited **1**, with the actual error:
+`failed to load @config//main.star: open main.star: no such file or directory`.
+C53 owns repair. The two hardware source module paths are also absent in that
+platform; C53 must wire canonical source revisions, not stale copies.
+
+Independently, `tests/android_adapter_probe.py` used the **real platform SDK37 aidl**
+to generate NDK headers from the authentic frozen V2 sources and hash, then real
+source-selected Android Clang22/Bionic/libc++ with vendor/VNDK macros to compile
+Controller.cpp, LedSwitch.cpp, OneShot.cpp, Vibrator.cpp and main.cpp:
+**5/5 arm64 relocatable objects PASS** (ELF64 little-endian, e_machine=183,
+e_type=REL checked). No fake BnVibrator or platform classes were created.
+
+| Input/result | Exact value |
+|---|---|
+| Target interfaces commit | `13fc23dae0dcd24fc2411d74f54a407999eaf555` |
+| Frozen IVibrator V2 SHA-256 | `51161792eba95aee28a92723a1430b235e57e75751c24db04d84f7d83cca318e` |
+| Frozen interface hash | `ea8742d6993e1a82917da38b9938e537aa7fcb54` |
+| SDK37 aidl executable SHA-256 | `e1e14741bd59f5b5eff3a01e50bc226d465b576f4ad4e9b77623933362e8d591` |
+| Generated genuine BnVibrator.h SHA-256 | `be9855519afb8f1bf1076c2f64d1e4d7167184e8eec8634060db9e8b42bd73cc` |
+| Source-selected compiler | `prebuilts/clang/host/linux-x86/clang-r584948/bin/clang++`, resource version22 |
+| Target flags | aarch64-linux-android10000, C++17, PIC, no exceptions/RTTI, vendor/VNDK macros, Wall/Wextra/Werror, actual Bionic/libc++/NDK includes |
+
+This fixes the old missing-header dependency **for an independent source-object
+probe**. It verifies actual V2 override signatures, not service linking, the
+Soong vendor graph, registration/IPC, VTS or physical operation. The service is
+**NOT Soong-built or linked**. Generated files/objects are removed, not committed.
+Pinned target IVibrator documentation and VTS source were consulted for truthful
+capability/callback/optional-method behavior; VTS was not executed.
+
+## Tests, integration gate and owner next actions
+
+- **94/94 Python checks PASS**, original90 preserved plus4 focused C51B checks.
+- **12/12 original native cases** normal and ASan/UBSan; **17/17 lifecycle/policy/
+  protocol cases** normal, ASan/UBSan AND TSan. GCC16.2.1, C++17/pthread,
+  Wall/Wextra/Werror/O1/g; leak/halt-on-error sanitizers. Tests use actual controller
+  and production request policy with explicitly fake sysfs, not Binder mocks.
+- Tests cover validation/cap0/callback rejection, every timed transaction failure,
+  activation/cancellation/replacement, fault latch/recovery, read errors, missing/
+  wrong/ambiguous nodes, fd ownership, concurrency, restart/shutdown, null init and
+  legacy process-kill limitations. An initial new source-check expectation was
+  corrected from20 unsupported wrappers to19 (24 frozen methods minus5 handled
+  methods); no functional failure was suppressed or original test removed.
+- Exact integration contract is the board owner's README at the commit above:
+  module `android.hardware.vibrator-service.gq5012bf1`, V2 IVibrator/default,
+  executable `/vendor/bin/hw/android.hardware.vibrator-service.gq5012bf1`, init
+  `vendor.vibrator-default`, static libmtk_regulator_vibrator and shared V2-ndk/
+  libbinder_ndk/libbase. System UID/group; default vibrator domain/executable type.
+- Code gate is unconditionally FALSE **before discovery/I/O/registration**, plus
+  disabled+oneshot init. There is no property/command-line bypass. Keep package
+  AND fragment unselected; disabled alone cannot prevent interface-start requests.
+- C52 reports stock binary/rc are PRODUCT_COPY_FILES and fragment is a package.
+  Future exclusion must mark the exact three extraction entries EXTRACT_ONLY and
+  regenerate vendor config, not mutate readonly product variables in BoardConfig.
+- **Newly available C52 compatibility evidence:** stock V2 fragment also declares
+  IVibratorManager/default; our source implements ONLY IVibrator. Do not drop
+  Manager silently or fabricate its actuator IDs. Owner must resolve the Manager
+  implementation/compatible selection before replacing the whole stock service.
+- Node labels/real path/ueventd ownership remain unknown. Required narrow rights
+  are directory/link reads, max_brightness read, trigger read/write, brightness
+  OFF and invert/delay_on/delay_off/shot writes; no broad sysfs/root/permissive rule.
+  **Creation-lifetime gate:** led_trigger_set removes/adds attribute groups;
+  brightness=0 removes the trigger, so each new shot recreates its attributes.
+  oneshot defines invert/delays as0644 and shot as0200. Do not assume a one-time
+  chown/boot rule survives recreation, or that asynchronous change-event ueventd
+  handling finishes before HAL writes. Owner must demonstrate deterministic
+  narrow ownership/access across every cancel/rearm, or provide an appropriate
+  stable kernel-timed ABI. Do not solve this with root/DAC_OVERRIDE shortcuts.
+  Current source returns access errors/fault-latches; it does not pretend this
+  unavailable ownership contract is solved.
+- Next: C53 restores real bootstrap and wires sources; kernel owner validates
+  ONESHOT/config/lifetime/duration policy; device/vendor owner resolves Manager,
+  exact single-service selection, node policy, true linking/metadata/IPC. Only
+  then separately approved hardware/process-death validation and gate review.
+  No activation or hardware test was performed by C51B.
+
+Reproduce from `tools/ulefone/gq5012bf1/hal-audit`:
+
+```sh
+LIEPPOS_REAL_SOURCE_TESTS=1 LIEPPOS_C51_SOURCE_TESTS=1 \
+  PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -v
+PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -B tests/android_adapter_probe.py \
+  /mnt/SamsungSSD/android/lineage-24.0
+```
+
+Only affected vibrator source/readiness interpretations were updated. Existing
+JSON/CSV/SCAN-SUMMARY are explicitly retained frozen C51 snapshots; no new full
+inventory exercise of C53-owned inputs or reopening of77 relationships occurred.
+The live source lens now records the conditional oneshot dependency when present,
+without certifying tests/build/hardware. All acceptance gates remain independent.
+No extra checkout, repository, permanent build artifact or AI-policy automation.
+
+---
+
+# Retained C51 historical handoff (superseded above for vibrator)
+
+The following is the C51 record at tools baseline80545f8. C52 reports that its
+summary was merged; these old counts/build blockers/publication proposals are
+historical and must not be applied as current C51B status.
 
 ## Starting state and ownership
 
@@ -89,7 +268,7 @@ See `android/hardware/ulefone/gq5012bf1/README.md` for proposed namespace/packag
 4. Run real assembled metadata checks and later separately authorized hardware tests on an identified safe image set. Do not infer any operation from C46 boot completion.
 5. When research ownership is free, import the verified narrative/provenance and reference the canonical source/tool commits. **Research remains unmerged and publication-held** under the existing policy.
 
-## Publication approval packets — preparation only, NO push
+## Archived C51 publication packets — SUPERSEDED, no current approval request
 
 Both proposals are **source-only experimental review candidates, NOT deployment-ready**. Each reachable proposed source history is one new root commit containing only the scoped source/license/tests/docs; no inherited vendor history or binary payload is introduced. Source inspection found no secrets, firmware, calibration or device identifiers in these new hardware trees. This is not a hardware/security certification.
 

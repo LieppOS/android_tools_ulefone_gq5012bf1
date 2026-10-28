@@ -4,11 +4,42 @@ Read-only Python 3.10+ / Linux integration auditor. Standard-library runtime; no
 
 **Ownership:** only `tools/ulefone/gq5012bf1/hal-audit/` in the existing tools checkout. This is a specialized derived audit, not a replacement for `inventory/subsystems.csv` or the authoritative research repository. Nothing here changes Android configuration.
 
-## C51 continuation
+## C51B continuation — deployment CLOSED
+
+Uncommitted C51B work was recovered on `integration/c51b-vibrator` without reset
+or reimplementation. The timed-only backend now uses the verified Linux LED
+`oneshot` protocol, never brightness-on fallback. Fault/retry/lifecycle handling
+and the request policy were hardened. Code refuses discovery/I/O/registration
+while `deploymentAllowed()` is false; init is also disabled+oneshot. Keep the
+module and fragment unselected: source disable alone is not product integration.
+
+Recorded C51B gate: **94/94 Python checks**, original native **12/12** and new
+lifecycle/protocol **17/17**, both normally and ASan/UBSan; new **17/17 TSan**.
+The real SDK37 aidl compiler generated frozen V2 headers from the authentic
+platform source/hash; real Android Clang22/Bionic compiled **5/5 arm64 objects**.
+No fake Binder header/class was used. **Not linked, Soong-built or IPC-tested.**
+
+Reproduce the independent real-interface/object probe (read-only existing C52
+platform, outputs created/removed only under this project's ignored `.tmp/`):
+
+```sh
+PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -B \
+  tests/android_adapter_probe.py /mnt/SamsungSSD/android/lineage-24.0
+```
+
+A real isolated targeted Soong request exited 1 at missing
+`build/soong/config/main.star`. DeepSeek C53 owns repair and source wiring; its
+source, outputs and active research were not modified. Kernel ONESHOT availability,
+driver lifetime, safe duration policy, real sysfs permissions, stock Manager
+compatibility and hardware behavior still block deployment. See source-owner
+READMEs, `reports/INTEGRATION-READINESS.md` and the updated **unmerged C51B**
+`docs/RESEARCH-HANDOFF.md` for exact evidence/next actions.
+
+## C51 baseline (historical)
 
 The existing validator is reused. One real timed vibrator source implementation now lives in `android/hardware/ulefone/gq5012bf1/vibrator/`, using the native backend in `android/hardware/mediatek/mt6878/vibrator/`. These are existing source owners, not new checkouts. The source owner READMEs contain exact activation requirements and the process-death timeout safety blocker. Device/vendor activation is not applied.
 
-Current scan: 80 contracts (79 historical + one new source fragment), one source-mapped service, 77 historical init relationships still `MISSING_METADATA`, and all 48 explicit override overlaps reviewed as intentional at source level. `init_relationships` and `vintf_review` provide individual classifications without a fake libvintf PASS. Helper rc processes are not automatically assumed to be HAL servers. Static `validation_properties` do not infer executed unit/Soong/VTS/hardware results; actual receipts are in the research handoff.
+Frozen C51 scan: 80 contracts (79 historical + one new source fragment), one source-mapped service, 77 historical init relationships still `MISSING_METADATA`, and all 48 explicit override overlaps reviewed as intentional at source level. `init_relationships` and `vintf_review` provide individual classifications without a fake libvintf PASS. Helper rc processes are not automatically assumed to be HAL servers. Static `validation_properties` do not infer executed unit/Soong/VTS/hardware results; actual receipts are in the research handoff.
 
 C51 native backend tests pass 12/12 normally and under ASan/UBSan; the full Python suite passes 90/90 (original 78 + 12 new). The genuine Android Binder adapter is not compiled: target Soong/generated NDK headers are absent. No counterfeit generated header is used.
 
@@ -26,7 +57,7 @@ python3 -B -m lieppos_hal_audit.cli --root /path/to/approved/source
 
 Omitting `--output` is a summary-only dry run. With `--output`, only that **disjoint** report directory is written. Inputs are always read-only. Repeat `--root`; symlinks are never followed. Do not give a filesystem-wide root.
 
-### Reproduce the committed device report
+### Historical C51 report invocation
 
 ```sh
 PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -B -m lieppos_hal_audit.cli \
@@ -40,6 +71,13 @@ PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -B -m lieppos_hal_audit.cli \
   --runtime-properties /mnt/SamsungSSD/lieppos-c46/hardware-approved/live-slotb-getprop-1.txt \
   --output "$PWD/reports"
 ```
+
+**The committed machine reports remain the C51 snapshot** (tools baseline
+`80545f8775e0695840a7640bb16faddc8be0f845`). Do not run the historical export above
+to refresh C52/C53-owned inputs during this focused continuation. Only the
+vibrator readiness interpretation is updated by C51B; the original 77 unresolved
+relationships, 48 override reviews and other inventory rows are preserved.
+A future explicitly requested fresh CLI scan sees current sources and will differ.
 
 The optional historical getprop file is an existing, explicitly supplied evidence file, **not a live phone query**. Omit that option when unavailable; runtime evidence/counts will then differ. `--gq5012bf1` enables a filename/evidence-gated device coverage lens, including undeclared hardware artifact references. It does not manufacture interface names or versions from filenames.
 
@@ -95,14 +133,15 @@ Inputs are opened through directory file descriptors with `O_NOFOLLOW`; output p
 ## Tests
 
 ```sh
-# Portable synthetic/classifier suite: 81 passed; nine local checks skipped.
+# Portable synthetic/classifier suite: 81 passed; thirteen local checks skipped.
 PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -v
 
 # Explicitly opt into the six authorized roots and documented C46 evidence:
 LIEPPOS_REAL_SOURCE_TESTS=1 LIEPPOS_C51_SOURCE_TESTS=1 \
   PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 \
   python3 -B -m unittest discover -s tests -v
-# Recorded result: 90/90 passed, no skips (including 12-case native runs twice).
+# C51B recorded result: 94/94 passed, no skips (12-case suite twice,
+# 17-case suite normal + ASan/UBSan + TSan).
 ```
 
 Tests use temporary files only under ignored `.tmp/` in this project and remove them. No caches/build outputs belong in Git. See readiness for the observed results and unresolved device integration questions.
