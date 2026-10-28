@@ -21,9 +21,9 @@ preserved. Recovery tests were already **94/94 PASS**, beyond the C51 90 baselin
 | `android_hardware_mediatek_mt6878` | `1957904697f7eec67b42c3a46b9b86a5761da779` | `a04942aee7a1410a56ffdf97d590d187c58b545f` |
 | `android_hardware_ulefone_gq5012bf1` | `88aac5431cdb2e2599411658d6e71dc233ab2bb6` | `cec737485c17a23de683fba10e807ce58737c026` |
 
-Both preserve their respective C51 parents. Tools C51B changes are the commit
-containing this handoff, parent `80545f8775e0695840a7640bb16faddc8be0f845`;
-its full SHA is in the final completion receipt. Native source remains INDEPENDENT,
+Both preserve their respective C51 parents. Tools C51B changes descend from
+`80545f8775e0695840a7640bb16faddc8be0f845`; the final tip containing this handoff
+is identified by its full SHA in the completion receipt. Native source remains INDEPENDENT,
 LieppOS Contributors, Apache-2.0; no generated headers, binaries, firmware,
 calibration, keys or proprietary implementation bodies were imported.
 
@@ -100,9 +100,16 @@ e_type=REL checked). No fake BnVibrator or platform classes were created.
 | Frozen IVibrator V2 SHA-256 | `51161792eba95aee28a92723a1430b235e57e75751c24db04d84f7d83cca318e` |
 | Frozen interface hash | `ea8742d6993e1a82917da38b9938e537aa7fcb54` |
 | SDK37 aidl executable SHA-256 | `e1e14741bd59f5b5eff3a01e50bc226d465b576f4ad4e9b77623933362e8d591` |
-| Generated genuine BnVibrator.h SHA-256 | `be9855519afb8f1bf1076c2f64d1e4d7167184e8eec8634060db9e8b42bd73cc` |
+| Generated genuine BnVibrator.h SHA-256 (sample run only) | `be9855519afb8f1bf1076c2f64d1e4d7167184e8eec8634060db9e8b42bd73cc` |
 | Source-selected compiler | `prebuilts/clang/host/linux-x86/clang-r584948/bin/clang++`, resource version22 |
 | Target flags | aarch64-linux-android10000, C++17, PIC, no exceptions/RTTI, vendor/VNDK macros, Wall/Wextra/Werror, actual Bionic/libc++/NDK includes |
+
+Raw generated-header hashes are **not stable across temporary output paths**:
+the genuine generator embeds its full `Using:` command in a comment. The
+post-commit probe's raw hash was `214b08cbbd5ae7e44e3c3fbeb361d356c5cb2f02aabaf3d954b0f848b2cd824f`.
+A two-output-directory generation comparison confirmed that only that command
+comment differed. No generated file was edited/normalized or checked into Git;
+no bit-identical header claim or changed expected-hash gate is involved.
 
 This fixes the old missing-header dependency **for an independent source-object
 probe**. It verifies actual V2 override signatures, not service linking, the
