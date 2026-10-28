@@ -1,4 +1,4 @@
-# C51B — vibrator source continuation, deployment CLOSED
+# C51C — vibrator kernel timeout, deployment CLOSED
 
 Only the vibrator status is updated here. The machine JSON/CSV/SCAN-SUMMARY remain
 **frozen C51 input snapshots**, not a fresh C52/C53 inventory. Their original
@@ -6,22 +6,24 @@ Only the vibrator status is updated here. The machine JSON/CSV/SCAN-SUMMARY rema
 relationships are not reopened or rewritten. A fresh explicitly requested CLI run
 uses the new source lens; it must not be mistaken for the retained baseline.
 
-| Current vibrator property | Actual C51B result |
+| Current vibrator property | Actual C51C result |
 |---|---|
-| Native source | Timed-only Linux LED oneshot path; no brightness-on fallback; fault latch, immediate OFF retry, null/discovery/error handling corrected |
-| Kernel guarantee | Conditional source argument only; effective ONESHOT config, driver lifetime/regulator behavior and safe duration policy unverified |
-| AIDL | Genuine SDK37 aidl generated frozen V2; real Clang22/Bionic/vendor+VNDK compile of 5/5 arm64 source objects PASS |
-| Whole service / Soong | NOT linked; targeted Soong bootstrap exited 1 at missing build/soong/config/main.star; C53 owns repair/wiring |
-| Tests | 94/94 Python; 12 original + 17 lifecycle native cases normal and ASan/UBSan; 17/17 TSan |
-| Process death | SIGTERM/SIGKILL/SIGABRT host simulations demonstrate legacy failure; do not certify kernel/hardware |
+| Native source | Driver-owned timeout ABI1 only; exported maximum validation, atomic duration write, no brightness/trigger fallback |
+| Kernel | Real module build/modpost/link PASS, matching Clang17, unchanged C50 config/core exports; canonical-first mirror sync |
+| Kernel guarantee | Source-supported kernel expiry/OFF attempts independent of userspace, with fault retries and teardown synchronization; not physical hard-cutoff proof |
+| Offline ABI | 32/32 import CRCs match core,13 common CRCs/six callback KCFI tags unchanged, no exports, identical vermagic/dependencies |
+| AIDL | Genuine frozen V2; real Clang22/Bionic/vendor+VNDK compile of 6/6 ARM64 objects PASS |
+| Whole service / Soong | NOT linked by C51C; C53 confirms relative OUT_DIR=out works; concurrent C54 shared outputs not used |
+| Tests | 96/96 Python; HAL34/34 normal+ASan/UBSan,22/22 TSan; kernel-policy12/12 each mode+4 static guards |
+| Process death | Kernel owns timer/work; no process cleanup dependency under normal kernel/regulator operation; hardware fault/current/kill tests not performed |
 | Deployment | Unconditionally false code gate before I/O/registration AND disabled+oneshot init; keep module/fragment unselected |
 | Compatibility | C52 reports stock IVibrator AND IVibratorManager/default V2; source implements IVibrator only; no silent Manager drop |
 | Policy / hardware | Actual node labels/ownership, compiled replacement policy, assembled metadata, registration/IPC and physical validation still required |
 
 Exact current integration instructions: `android/hardware/ulefone/gq5012bf1/README.md`.
-Kernel evidence and unapplied config proposal: `android/hardware/mediatek/mt6878/vibrator/SAFETY.md`.
+Kernel evidence: `android/hardware/mediatek/mt6878/vibrator/SAFETY.md` and canonical kernel timeout ABI documentation. The old generic-trigger config proposal is SUPERSEDED/DO NOT APPLY; actual reference config keeps ONESHOT unset.
 Current source revisions/test receipts and the **unmerged** research handoff:
-`../docs/RESEARCH-HANDOFF.md`. C52's earlier stock-only checks are not C51B validation.
+`../docs/RESEARCH-HANDOFF.md`. C52/C53 stock-only checks are not replacement validation. The5000ms ceiling is provisional software policy, not a physical thermal rating; persistent regulator faults cannot be promised OFF by software.
 
 ---
 

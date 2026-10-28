@@ -4,20 +4,27 @@ Read-only Python 3.10+ / Linux integration auditor. Standard-library runtime; no
 
 **Ownership:** only `tools/ulefone/gq5012bf1/hal-audit/` in the existing tools checkout. This is a specialized derived audit, not a replacement for `inventory/subsystems.csv` or the authoritative research repository. Nothing here changes Android configuration.
 
-## C51B continuation — deployment CLOSED
+## C51C continuation — deployment CLOSED
 
-Uncommitted C51B work was recovered on `integration/c51b-vibrator` without reset
-or reimplementation. The timed-only backend now uses the verified Linux LED
-`oneshot` protocol, never brightness-on fallback. Fault/retry/lifecycle handling
-and the request policy were hardened. Code refuses discovery/I/O/registration
-while `deploymentAllowed()` is false; init is also disabled+oneshot. Keep the
-module and fragment unselected: source disable alone is not product integration.
+Continues committed C51B, no new audit/framework. Selected kernel solution is a
+driver-owned CLOCK_BOOTTIME hrtimer and stable timeout ABI1, **not** generic LED
+one-shot configuration. The real recipe uses c44-reference.config with ONESHOT
+unset and REGULATOR_VIBRATOR=m; configuration/core exports are unchanged.
 
-Recorded C51B gate: **94/94 Python checks**, original native **12/12** and new
-lifecycle/protocol **17/17**, both normally and ASan/UBSan; new **17/17 TSan**.
-The real SDK37 aidl compiler generated frozen V2 headers from the authentic
-platform source/hash; real Android Clang22/Bionic compiled **5/5 arm64 objects**.
-No fake Binder header/class was used. **Not linked, Soong-built or IPC-tested.**
+Production DriverTimed.cpp requires timeout_abi/max_duration_ms/duration_ms and
+uses one bounded atomic write. No trigger/brightness fallback or extra root
+privilege. Kernel maximum is validated before I/O in native and Binder layers.
+The5000ms policy is not a hardware thermal rating. Code/init gates stay CLOSED;
+keep package/fragment unselected until installation, physical, policy/Manager and
+Android integration proofs are complete.
+
+Recorded: **96/96 Python**, **34/34 HAL native and ASan/UBSan**, **22/22 HAL TSan**;
+actual portable kernel policy **12/12** each mode +4 static ordering guards.
+Real targeted kernel module build/modpost/link passes with matching Clang17;
+32 core import CRCs,13 common CRCs and6 callback KCFI tags match; no exports.
+No kernel Image, kernel runtime or physical operation is claimed. Genuine SDK37
+AIDL/Clang22/Bionic compiles **6/6 ARM64 source objects**, not a linked Soong service.
+No fake generated Binder header/class is used.
 
 Reproduce the independent real-interface/object probe (read-only existing C52
 platform, outputs created/removed only under this project's ignored `.tmp/`):
@@ -27,13 +34,13 @@ PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -B \
   tests/android_adapter_probe.py /mnt/SamsungSSD/android/lineage-24.0
 ```
 
-A real isolated targeted Soong request exited 1 at missing
-`build/soong/config/main.star`. DeepSeek C53 owns repair and source wiring; its
-source, outputs and active research were not modified. Kernel ONESHOT availability,
-driver lifetime, safe duration policy, real sysfs permissions, stock Manager
-compatibility and hardware behavior still block deployment. See source-owner
-READMEs, `reports/INTEGRATION-READINESS.md` and the updated **unmerged C51B**
-`docs/RESEARCH-HANDOFF.md` for exact evidence/next actions.
+C53 diagnosed the old absolute-OUT_DIR main.star failure: relative OUT_DIR=out
+works. C54 owns active shared vendor/policy/platform outputs; C51C does not run a
+concurrent Soong build or repair that checkout. See source-owner READMEs,
+`reports/INTEGRATION-READINESS.md` and the updated **unmerged C51C**
+`docs/RESEARCH-HANDOFF.md` for exact kernel/mirror/HAL revisions, validation scope,
+the disclosed/restored initial ELF-tool side effect and C54 next actions.
+Historical C51B source/proposal/test receipts remain at tools commitdf8ea6b.
 
 ## C51 baseline (historical)
 
@@ -133,15 +140,15 @@ Inputs are opened through directory file descriptors with `O_NOFOLLOW`; output p
 ## Tests
 
 ```sh
-# Portable synthetic/classifier suite: 81 passed; thirteen local checks skipped.
+# Portable synthetic/classifier suite: 81 passed; fifteen local checks skipped.
 PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python3 -B -m unittest discover -s tests -v
 
 # Explicitly opt into the six authorized roots and documented C46 evidence:
 LIEPPOS_REAL_SOURCE_TESTS=1 LIEPPOS_C51_SOURCE_TESTS=1 \
   PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 \
   python3 -B -m unittest discover -s tests -v
-# C51B recorded result: 94/94 passed, no skips (12-case suite twice,
-# 17-case suite normal + ASan/UBSan + TSan).
+# C51C recorded result: 96/96 passed, no skips (HAL12+22 and kernel-policy12;
+# sanitizer scopes described above; no kernel/hardware runtime inference).
 ```
 
 Tests use temporary files only under ignored `.tmp/` in this project and remove them. No caches/build outputs belong in Git. See readiness for the observed results and unresolved device integration questions.

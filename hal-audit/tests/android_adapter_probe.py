@@ -72,7 +72,7 @@ def run(platform):
             for path in includes:
                 flags += ['-isystem', str(path)]
             print('OBJECT_FLAGS', ' '.join(flags))
-            sources = [MTK / 'vibrator' / n for n in ['Controller.cpp', 'LedSwitch.cpp', 'OneShot.cpp']]
+            sources = [MTK / 'vibrator' / n for n in ['Controller.cpp', 'LedSwitch.cpp', 'OneShot.cpp', 'DriverTimed.cpp']]
             sources += [BOARD / 'vibrator' / n for n in ['Vibrator.cpp', 'main.cpp']]
             for n, source in enumerate(sources):
                 result = subprocess.run([str(clang), *flags, '-c', str(source), '-o', str(out / f'{n}.o')],
@@ -84,7 +84,7 @@ def run(platform):
                 if elf[:6] != b'\x7fELF\x02\x01' or int.from_bytes(elf[16:18], 'little') != 1 or int.from_bytes(elf[18:20], 'little') != 183:
                     raise RuntimeError('Not a little-endian ELF64 AArch64 relocatable object')
                 print('VERIFIED_ELF64_AARCH64_REL', source.name)
-            print('ARM64_OBJECTS_COMPILED 5/5; NOT_SOONG NOT_LINKED NOT_RUNTIME_TESTED')
+            print('ARM64_OBJECTS_COMPILED 6/6; NOT_SOONG NOT_LINKED NOT_RUNTIME_TESTED')
             return 0
     finally:
         try:

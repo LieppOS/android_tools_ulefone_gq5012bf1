@@ -126,7 +126,7 @@ def apply_device_coverage(result):
                 backend_repository='LieppOS/android_hardware_mediatek_mt6878',
                 classification='SOURCE_AVAILABLE_HAL_CODE_NOT_WHOLE_STACK',
                 build_dependencies=['android.hardware.vibrator-V2-ndk', 'libbinder_ndk', 'libbase', 'libmtk_regulator_vibrator'],
-                kernel_timeout_dependency='Linux LED oneshot protocol in source; effective config, lifetime and physical cutoff unverified' if any(p.endswith('/vibrator/OneShot.cpp') for p in implementation_files) else 'UNKNOWN',
+                kernel_timeout_dependency=('Driver-owned timeout ABI v1; effective module, supply and physical cutoff unverified' if any(p.endswith('/vibrator/DriverTimed.cpp') for p in implementation_files) else 'Linux LED oneshot protocol in source; effective config, lifetime and physical cutoff unverified' if any(p.endswith('/vibrator/OneShot.cpp') for p in implementation_files) else 'UNKNOWN'),
                 remaining='Target Soong/linking, kernel expiry/lifetime and duration policy, actual sysfs access, stock Manager contract and hardware validation; activation not applied')
             row['validation_properties'] = dict(SOURCE_IMPLEMENTED=True, UNIT_TESTED=None, SOONG_BUILD_PASSED=None,
                 VINTF_VALIDATED=None, PLATFORM_INTEGRATED=None, HARDWARE_VERIFIED=None)
