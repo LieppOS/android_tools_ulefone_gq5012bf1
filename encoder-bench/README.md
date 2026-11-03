@@ -1,4 +1,4 @@
-# encoder-bench: hardware video encoder throughput from adb
+# encoder-bench: hardware encoder and camera pipeline throughput from adb
 
 Measures what the GQ5012BF1 (MT6878) hardware encoders really sustain, without
 an app or a ROM build. It renders frames with GLES straight into the encoder's
@@ -38,3 +38,25 @@ The bitrate is about 0.18 bit/pixel/frame (4K60 ≈ 90 Mbit/s), capped at the co
 `soc_max`/`ap_ntc` temperatures.
 
 Remove `/data/local/tmp/encbench.dex` and any `out` files afterwards.
+
+## CamBench: camera pipeline (sensor -> ISP -> outputs)
+
+```sh
+adb shell CLASSPATH=/data/local/tmp/encbench.dex app_process / \
+    org.lieppos.encbench.CamBench <cameraId> <w> <h> <fpsMin> <fpsMax> <seconds> \
+    <normal|highspeed> [hfps=1] [encode] [preview=WxH] [nopreview]
+```
+
+It runs as root through adb (uid 0 passes the CAMERA permission check). It reports the
+capture-result rate, the real sensor rate (from `SENSOR_TIMESTAMP` and
+`SENSOR_FRAME_DURATION`), the frames delivered to a GL consumer and the HEVC encoder
+output rate. `hfps=1` sets MediaTek's `com.mediatek.streamingfeature.hfpsMode`, the stock
+app's 60 fps switch. The HAL only enables HFPS when a real video-encoder stream
+(`encode`) is part of the session.
+
+Warnings:
+
+- The stock HAL **aborts** (`evaluateSensorSetting: Unknown sensorMode`) on the 4K
+  constrained high-speed configurations it advertises. `camerahalserver` then restarts.
+- Do not read the vendor `/proc/mmdvfs` debug files while testing. Doing so caused a
+  kernel panic and a reboot.
